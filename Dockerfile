@@ -1,4 +1,9 @@
-FROM golang:1.22
+# Build app tracker
+FROM golang:1.22 AS builder
+
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
 
 WORKDIR /app
 
@@ -9,6 +14,15 @@ RUN go mod download
 COPY *.go ./
 COPY *.db ./
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /tracker_app
+RUN go build -o /tracker_app
 
-CMD ["/tracker_app"]
+# Container with app
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+
+COPY --from=builder /tracker_app .
+COPY --from=builder /app/*.db .
+
+CMD ["/app/tracker_app"]
